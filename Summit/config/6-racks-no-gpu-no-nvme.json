@@ -1,0 +1,14 @@
+{
+    "name": "Summit-6-racks-no-gpu-no-nvme",
+    "Fat-Tree_parameters": {
+        "levels": 3,
+        "up_links": "{18, 6, 6}",
+        "down_links": "{1, 2, 3}",
+        "links_number": "{1, 2, 1}"
+    },
+    "node_generator_cb": "no_gpu_no_nvme",
+    "limiter_cb": "limiter",
+    "bandwidth": 25e9,
+    "latency": 1e-8,
+    "sharing_policy": "SPLITDUPLEX"
+}
