@@ -2,23 +2,23 @@
 import os
 from pathlib import Path
 from time import time
-import numpy as np
+
 from sklearn.metrics import mean_squared_error as sklearn_mean_squared_error
 
 import simcal as sc
 from groundtruth import ground_truth
 
-cwd = Path(os.path.dirname(os.path.realpath(__file__)))  # Get path to THIS folder where the simulator lives
+simple_sim = Path(os.path.dirname(os.path.realpath(__file__)))  # Get path to THIS folder where the simulator lives
 
 
-class MPISimulator(sc.Simulator):
+class ExampleSimulator(sc.Simulator):
 
     def __init__(self, time=0):
         super().__init__()
         self.time = time
 
     def run(self, env, args):
-        cmdargs = [cwd / "smpirun"] + list(args[0]) + list(args[1]) + [self.time]
+        cmdargs = [simple_sim / "simple_simulator.py"] + list(args[0]) + list(args[1]) + [self.time]
         std_out, std_err, exit_code = sc.bash("python3", cmdargs, )
         if std_err:
             print(std_out, std_err, exit_code)
@@ -39,7 +39,7 @@ class Scenario:
         for x in self.ground_truth[0]:
             res.append(self.simulator((x, unpacked), stoptime=stop_time))
         ret = self.loss_function(res, self.ground_truth[1])
-        print("loss: ", ret)
+        print(ret)
         return ret
 
 
@@ -57,14 +57,10 @@ for x in known_points:
     data.append(ground_truth(*x))
 ground_truth_data = [known_points, data]
 
-# print(ground_truth_data)
-# Defining the loss function
-my_loss = sklearn_mean_squared_error
-
-
+loss = sklearn_mean_squared_error
 
 simulator = ExampleSimulator()
-scenario1 = Scenario(simulator, ground_truth_data, my_loss)
+scenario1 = Scenario(simulator, ground_truth_data, loss)
 
 # prepare the calibrator and setup the arguments to calibrate with their ranges
 # calibrator = sc.calibrators.Grid()

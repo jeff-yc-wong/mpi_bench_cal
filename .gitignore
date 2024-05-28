@@ -1,1 +1,5 @@
 __pycache__/
+bin/
+Summit/lib
+*.so
+*.o
