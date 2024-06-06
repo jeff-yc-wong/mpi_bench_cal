@@ -38,6 +38,8 @@ class Scenario:
         print(calibration)
         for x in self.ground_truth[0]:
             res.append(self.simulator((x, unpacked), stoptime=stop_time))
+        print("Simulation Data:", len(res))
+        print("Groundtruth Data:", len(self.ground_truth[1]))
         ret = self.loss_function(res, self.ground_truth[1])
         print(ret)
         return ret
@@ -76,7 +78,7 @@ coordinator = sc.coordinators.ThreadPool(pool_size=4)  # Making a coordinator is
 # wish to run multiple simulations at once, possibly using multiple cpu cores or multiple compute nodes
 start = time()
 calibration, loss = calibrator.calibrate(scenario1, timelimit=10, coordinator=coordinator)
-print("final calibration")
+print("final calibration?")
 print(calibration)
 print(loss)
 print(time() - start)
