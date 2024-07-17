@@ -5,13 +5,17 @@
 import json
 import sys
 import subprocess
+from pathlib import Path
 
 SIMGRID_INSTALL_PATH = "/usr/local"
 
 f_node = open(sys.argv[1])
 node = json.load(f_node)
 
-with open('src/node_config.hpp', 'w') as f:
+# get path of this file
+path = Path(__file__).parent.absolute()
+
+with open(path / 'src/node_config.hpp', 'w') as f:
       f.write("constexpr int cpu_core_count = " + str(node["cpu_core_count"]) + ";\n")
       f.write("constexpr const char* cpu_speed = \"" + node["cpu_speed"] + "\";\n")
       f.write("constexpr const char* gpu_speed = \"" + node["gpu_speed"] + "\";\n\n")
@@ -44,17 +48,29 @@ with open('tmp.cpp', 'w') as f:
       f.write("}\n")
 
 base   = subprocess.run(['g++', '-v', '--std=c++17', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+ SIMGRID_INSTALL_PATH +
-                        '/lib/', '-lsimgrid', '-fPIC', '-g', '-O2', '-Wall', '-Wextra', '-c', 'src/summit_base.cpp', '-o',
-                        'lib/summit_base.o'])
-compil = subprocess.run(['g++', '--std=c++17', '-v', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-Isrc',
+                        '/lib/', '-lsimgrid', '-fPIC', '-g', '-O2', '-Wall', '-Wextra', '-c', path / 'src/summit_base.cpp', '-o',
+                        path / 'lib/summit_base.o'])
+if base.returncode != 0:
+      sys.stderr.write("Compilation os summit_base.cpp failed\n")
+      sys.exit(1)
+
+compil = subprocess.run(['g++', '--std=c++17', '-v', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-I' + (str(path / 'src')),
                          '-L'+ SIMGRID_INSTALL_PATH + '/lib/', '-lsimgrid', '-fPIC', '-g', '-O2', '-Wall', '-Wextra',
                          '-c', 'tmp.cpp', '-o', 'tmp.o'])
-link   = subprocess.run(['g++','-v', '--std=c++17', '-shared', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+SIMGRID_INSTALL_PATH + '/lib', '-lsimgrid', 'tmp.o', '-o', "lib/"+ topo["name"] + ".so",
-                        "lib/summit_base.o"])
+
+if compil.returncode != 0:
+      sys.stderr.write("Compilation of tmp.cppfailed\n")
+      sys.exit(1)
+
+link   = subprocess.run(['g++','-v', '--std=c++17', '-shared', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+SIMGRID_INSTALL_PATH + '/lib', '-lsimgrid', 'tmp.o', '-o', topo["name"] + ".so",
+                        path / "lib/summit_base.o"])
+if link.returncode != 0:
+      sys.stderr.write("Linking failed\n")
+      sys.exit(1)
 
 clean  = subprocess.run(['rm', '-f', 'tmp.cpp', 'tmp.o'])
 
 base
 compil
 link
-clean
+# clean

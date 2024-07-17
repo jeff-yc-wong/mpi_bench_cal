@@ -38,6 +38,11 @@ class MPIGroundTruth:
             return filtered_df[metrics]
         
         return filtered_df
+    
+    def get_scenarios(self, node_count: int = None):
+        if node_count is not None:
+            return self.df[self.df['node_count'] == node_count].drop_duplicates(subset=['benchmark', 'processes'])[["benchmark", "node_count", "processes"]].reset_index(drop=True)
+        return self.df.drop_duplicates(subset=['benchmark', 'node_count', 'processes'])[["benchmark", "node_count", "processes"]].reset_index(drop=True)
 
 
 def main():
@@ -48,10 +53,6 @@ if __name__ == '__main__':
 
     summit_ground_truth.set_benchmark_parent("P2P")
 
-    ping_pong = summit_ground_truth.get_ground_truth("PingPong", 128, 768, ["Mbytes/sec"])
+    filtered_ground_truth = summit_ground_truth.get_ground_truth(node_count=128, metrics=["benchmark", "node_count", "processes", "Mbytes/sec", "bytes", "repetitions"])
 
-    summit_ground_truth.set_benchmark_parent("all")
-
-    ping_pong_all = summit_ground_truth.get_ground_truth(metrics=["benchmark", "node_count", "processes", "Mbytes/sec"])
-    print(ping_pong)
-    print(ping_pong_all)
+    print(filtered_ground_truth[filtered_ground_truth["benchmark"] == "PingPing"])
