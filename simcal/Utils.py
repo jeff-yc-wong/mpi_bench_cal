@@ -2,7 +2,7 @@ from typing import List
 import numpy as np
 
 
-def explained_variance_error(x_simulated: List[float], y_real: List[float]):
+def explained_variance_error(x_simulated: List[float], y_real: List[List[float]]) -> str:
     # convert python list into numpy array for faster computation of error
     x_simulated = np.array(x_simulated)
     y_real = np.array(y_real)

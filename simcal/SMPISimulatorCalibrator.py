@@ -41,11 +41,9 @@ class CalibrationLossEvaluator:
     
 
 class SMPISimulatorCalibrator:
-    def __init__(self, algorithm: str, simulator: SMPISimulator, ground_truth: MPIGroundTruth, loss: Callable):
-        self.algorithms = algorithm
+    def __init__(self, algorithm: str, simulator: SMPISimulator):
+        self.algorithm = algorithm
         self.simulator = simulator
-        self.ground_truth = ground_truth
-        self.loss = loss
 
     def compute_calibration(self, time_limit: float, num_threads: int):
         if self.algorithm == "grid":
@@ -79,15 +77,12 @@ class SMPISimulatorCalibrator:
         # split into 9 parts
         # calibrator.add_param("network/latency-factor", sc.parameter.Linear(0, 100).format("%.2f"))
 
-        # TODO: implement evaluator
-        evaluator = CalibrationLossEvaluator(self.simulator, self.ground_truth, self.loss)
-
         # Define the coordinator for the calibrator, in this case it's a ThreadPool
         coordinator = sc.coordinators.ThreadPool(pool_size=num_threads)
 
         try:
           start_time = perf_counter()
-          calibration, loss = calibrator.calibrate(evaluator, timelimit=time_limit, coordinator=coordinator)
+          calibration, loss = calibrator.calibrate(self.simulator, timelimit=time_limit, coordinator=coordinator)
           elapsed = int(perf_counter() - start_time)
           sys.stderr.write(f"Actually ran in {timedelta(seconds=elapsed)}\n")
           print("Calibrated Args: ")

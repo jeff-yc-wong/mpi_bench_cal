@@ -1,6 +1,9 @@
 import argparse
+import pandas as pd
 
 from GroundTruth import MPIGroundTruth
+from SMPISimulator import SMPISimulator
+from SMPISimulatorCalibrator import SMPISimulatorCalibrator
 
 
 def parse_ground_truth(ground_truth, use_iqm=False):
@@ -50,7 +53,7 @@ def parse_ground_truth(ground_truth, use_iqm=False):
     data_arr = []
 
     for i, sublist in enumerate(data):
-        # This sorts the dictory by keys
+        # This sorts the dictionary by keys
         data[i] = dict(sorted(sublist.items()))
         data_arr.append(list(data[i].values()))
 
@@ -68,59 +71,69 @@ def main():
     summit_df.set_benchmark_parent("P2P")
 
     filtered_df = summit_df.get_ground_truth(
+        node_count=128,
         metrics=[
             "benchmark",
             "node_count",
             "processes",
+            "repetitions",
             "bytes",
             "Mbytes/sec",
-            "repetitions",
             "remark",
-        ]
+        ],
+        benchmark="PingPing"
     )
+    
+    # remove rows where remark isn't NaN
+    filtered_df = filtered_df[pd.isnull(filtered_df["remark"])].reset_index(drop=True)
 
-    unique_df = filtered_df[["benchmark", "node_count", "processes"]].drop_duplicates()
+    scenario_df = filtered_df[["benchmark", "node_count", "processes", "bytes"]].drop_duplicates().reset_index(drop=True)
+    scenario_df = scenario_df.sort_values(by=["benchmark", "node_count", "processes", "bytes"]).reset_index(drop=True)
+    scenario_df["bytes"] = scenario_df["bytes"].astype(int)
+    scenario_df = scenario_df.groupby(['benchmark', 'node_count', 'processes'])['bytes'].agg(list).reset_index()
 
-    birandom_df = filtered_df[filtered_df["benchmark"] == "Birandom"].reset_index(
-        drop=True
-    )
+    # check for stencil benchmarks
+    is_stencil = scenario_df["benchmark"].str.contains("Stencil")
 
-    is_stencil = unique_df["benchmark"].str.contains("Stencil")
-    test_df = unique_df[~is_stencil].reset_index(drop=True)
-    validation_df = unique_df[is_stencil].reset_index(drop=True)
+    # get test set of ground truth data that only contains non-stencil benchmarks
+    test_df = scenario_df[~is_stencil].reset_index(drop=True)
+    # get validation set of ground truth data that only contains stencil benchmarks
+    validation_df = scenario_df[is_stencil].reset_index(drop=True)
 
-    print("Scenarios:")
-    print(test_df)
+    data_df = filtered_df[["benchmark", "node_count", "processes", "bytes", "Mbytes/sec"]].sort_values(by=["benchmark", "node_count", "processes", "bytes"]).reset_index(drop=True)
+    data_df = data_df.groupby(['benchmark', 'node_count', 'processes', 'bytes'])['Mbytes/sec'].agg(list).reset_index()
+
+    
+    is_stencil = data_df["benchmark"].str.contains("Stencil")
+    test_data_df = data_df[~is_stencil].reset_index(drop=True)
+    validation_data_df = data_df[is_stencil].reset_index(drop=True)
+
+    assert scenario_df["bytes"].apply(len).sum() == len(data_df["Mbytes/sec"])
+    assert test_df["bytes"].apply(len).sum() == len(test_data_df["Mbytes/sec"])
+    assert validation_df["bytes"].apply(len).sum() == len(validation_data_df["Mbytes/sec"])
+
+
 
     known_points = []
     for _, row in test_df.iterrows():
-        df = summit_df.get_ground_truth(benchmark=row["benchmark"], node_count=row["node_count"], processes=row["processes"])
-        known_points.append(((row["benchmark"], row["node_count"], row["processes"]), parse_ground_truth(df)))
+        known_points.append((row['benchmark'], row['node_count'], row['processes'], row['bytes']))
 
-    # assert all([len(sublist) == 24 for scenario in known_points for runs in scenario[1] for sublist in runs])
+    data = list(test_data_df["Mbytes/sec"])
 
-    for scenario in known_points[0:1]:
-        for runs in scenario[1]:
-            print(runs)
-    # print("Validation points")
-    # print(validation_points)
+    ground_truth_data = [known_points, data]
 
-    # known_points = []
+    smpi_sim = SMPISimulator(
+        ground_truth_data, "IMB-P2P", "/home/wongy/mpi_bench_cal/hostfile.txt", 0.05, 3
+    )
 
-    # for _, row in test_df.iterrows():
-    #     known_points.append((row['benchmark'], row['node_count'], row['processes']))
 
-    # data = []
+    calibrator = SMPISimulatorCalibrator(
+        "random", smpi_sim
+    )
 
-    # for x in known_points:
-    #     data_df = filtered_df[(filtered_df['benchmark'] == x[0]) & (filtered_df['node_count'] == x[1]) & (filtered_df['processes'] == x[2])]
-    #     point_data = []
-    #     for _, row in data_df.iterrows():
-    #         point_data.append((x, row['bytes'], row['Mbytes/sec'], row['repetitions']))
+    calibrator.compute_calibration(10, 1)
 
-    #     data.append(point_data)
 
-    # print(len(data), len(known_points))
 
 
 if __name__ == "__main__":

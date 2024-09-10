@@ -1,11 +1,11 @@
 {
-    "cpu_core_count": 84,
     "cpu_speed": "24.56Gf",
     "pcie_bw": "16GBps",
     "pcie_lat": "10ns",
     "xbus_bw": "64GBps",
     "xbus_lat": "10ns",
     "limiter_bw": "100Gbps",
+    "cpu_core_count": 84,
     "gpu_speed": "7.8Tf",
     "cpu_gpu_nvlink_bw": "50Gbps",
     "cpu_gpu_nvlink_lat": "10ns",
