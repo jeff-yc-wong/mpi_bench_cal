@@ -66,7 +66,7 @@ def main():
     # TODO: use argparse to parse cmdline arguments for calibration
     # which should only be time-limit and algorithm and maybe benchmarks (all or singular benchmarks)
 
-    summit_df = MPIGroundTruth("../imb-summit.csv")
+    summit_df = MPIGroundTruth("/home/wongy/calibration/mpi_bench_cal/imb-summit.csv") #NOTE: change
 
     summit_df.set_benchmark_parent("P2P")
 
@@ -80,12 +80,13 @@ def main():
             "bytes",
             "Mbytes/sec",
             "remark",
-        ],
-        benchmark="PingPing"
+        ]
     )
     
     # remove rows where remark isn't NaN
     filtered_df = filtered_df[pd.isnull(filtered_df["remark"])].reset_index(drop=True)
+
+    filtered_df = filtered_df[filtered_df["benchmark"].isin(["PingPing", "PingPong", "Birandom"])]
 
     scenario_df = filtered_df[["benchmark", "node_count", "processes", "bytes"]].drop_duplicates().reset_index(drop=True)
     scenario_df = scenario_df.sort_values(by=["benchmark", "node_count", "processes", "bytes"]).reset_index(drop=True)
@@ -121,9 +122,12 @@ def main():
     data = list(test_data_df["Mbytes/sec"])
 
     ground_truth_data = [known_points, data]
+    
+    #print(f"Known Points: {known_points}")
+    #print(f"GroundTruth: {data}")
 
     smpi_sim = SMPISimulator(
-        ground_truth_data, "IMB-P2P", "/home/wongy/mpi_bench_cal/hostfile.txt", 0.05, 3
+        ground_truth_data, "IMB-P2P", "/home/wongy/calibration/mpi_bench_cal/hostfile.txt", 0.05, 24
     )
 
 
@@ -131,7 +135,7 @@ def main():
         "random", smpi_sim
     )
 
-    calibrator.compute_calibration(10, 1)
+    calibrator.compute_calibration(10800, 1)
 
 
 

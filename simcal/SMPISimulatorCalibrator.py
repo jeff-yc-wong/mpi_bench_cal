@@ -14,32 +14,6 @@ import simcal as sc
 import SMPISimulator
 from GroundTruth import MPIGroundTruth
 
-class CalibrationLossEvaluator:
-    def __init__(self, simulator: SMPISimulator, ground_truth: MPIGroundTruth, loss: Callable):
-        self.simulator : SMPISimulator = simulator
-        self.ground_truth : MPIGroundTruth = ground_truth
-        # print("IN CalibrationLossEvaluator:", ground_truth)
-        self.loss_function : Callable = loss
-
-    def __call__(self, calibration: dict[str, sc.parameters.Value], stop_time: float):
-        results = []
-
-        # Run simulator for all known ground truth points
-        # for benchmarks in self.ground_truth:
-        #     # Get the ground-truth makespan (should contain makespan, Mbytes/sec, Messages/sec)
-        #     # TODO: maybe store it as a panda dataframe?
-        #     ground_truth_makespans = [get_makespan(benchmark) for benchmark in benchmarks]
-        #     # Compute the average
-        #     average_ground_truth_makespan = sum(ground_truth_makespans) / len(ground_truth_makespans)
-        #     simulated_makespan, whatever = self.simulator((benchmark, calibration), stoptime=stop_time)
-        #     results.append((simulated_makespan, average_ground_truth_makespan))
-
-        # simulated_makespans, real_makespans = zip(*results)
-        # return self.loss_function(simulated_makespans, real_makespans)
-        return 0
-    
-    
-
 class SMPISimulatorCalibrator:
     def __init__(self, algorithm: str, simulator: SMPISimulator):
         self.algorithm = algorithm
@@ -56,18 +30,19 @@ class SMPISimulatorCalibrator:
             raise Exception(f"Unknown calibration algorithm {self.algorithm}")
     
         
-        # TODO: add params to calibrators
         # Adding platform params
-        calibrator.add_param("cpu_speed", sc.parameter.Linear(0, 20).format("%.2fGf"))
-        calibrator.add_param("pcie_bw", sc.parameter.Linear(0, 16).format("%.2fGbps"))
-        calibrator.add_param("pcie_lat", sc.parameter.Linear(0, 10).format("%.2fns"))
-        calibrator.add_param("xbus_bw", sc.parameter.Linear(0, 64).format("%.2fGBps"))
-        calibrator.add_param("xbus_lat", sc.parameter.Linear(0, 10).format("%.2fns"))
-        calibrator.add_param("limiter_bw", sc.parameter.Linear(0, 100).format("%.2fGbps"))
+        calibrator.add_param("cpu_speed", sc.parameter.Linear(20, 100).format("%.2fGf"))
+        calibrator.add_param("pcie_bw", sc.parameter.Linear(16, 160).format("%.2fGbps"))
+        calibrator.add_param("pcie_lat", sc.parameter.Linear(1, 20).format("%.2fns"))
+        calibrator.add_param("xbus_bw", sc.parameter.Linear(60, 70).format("%.2fGBps"))
+        calibrator.add_param("xbus_lat", sc.parameter.Linear(1, 20).format("%.2fns"))
+        calibrator.add_param("limiter_bw", sc.parameter.Linear(90, 10000).format("%.2fGbps"))
+
+        calibrator.add_param("latency", sc.parameter.Linear(1e-8, 1e-10).format("%.10f"))
+        calibrator.add_param("bandwidth", sc.parameter.Linear(25e9, 250e9).format("%.2f"))
+
 
         # Adding smpi params
-        # bandwidth: 65472:0.940694;15424:0.697866;9376:0.58729;5776:1.08739;3484:0.77493;1426:0.608902;732:0.341987;257:0.338112;0:0.812084
-        # TODO: separate each threshold to its own param for both bandwidth and latency?
         # should be called like so:
         # split into 9 parts
         # --cfg=network/bandwidth-factor:"65472:0.940694;15424:0.697866;9376:0.58729;5776:1.08739;3484:0.77493;1426:0.608902;732:0.341987;257:0.338112;0:0.812084"

@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import glob
 import simcal as sc
 from typing import List, Callable, Any
 from pathlib import Path
@@ -11,9 +12,10 @@ import numpy as np
 from time import perf_counter
 from GroundTruth import MPIGroundTruth
 from Utils import explained_variance_error
+from calibrate_flops import calibrate_hostspeed
 
-MPI_EXEC = Path("/home/wongy/mpi_bench_cal/bin")
-summit = Path("/home/wongy/mpi_bench_cal/Summit")
+MPI_EXEC = Path("/home/wongy/calibration/mpi_bench_cal/bin")
+summit = Path("/home/wongy/calibration/mpi_bench_cal/Summit")
 cwd = Path.cwd()
 
 class SMPISimulator(sc.Simulator):
@@ -29,6 +31,7 @@ class SMPISimulator(sc.Simulator):
         self.ground_truth = ground_truth
         self.num_procs = num_procs
         self.loss_function = explained_variance_error
+        self.hostspeed = calibrate_hostspeed()
 
     def need_more_benchs(self, count, iterations, relstderr):
         # setting a minimum iteration of 10
@@ -73,10 +76,9 @@ class SMPISimulator(sc.Simulator):
             smpi_args.append(f"--cfg={key}:{value}")
 
         # Rebuilding the platform .so file with the new node and topology configurations
-        template_node = "/home/wongy/mpi_bench_cal/Summit/config/node_config.json"
-        template_topology = (
-            "/home/wongy/mpi_bench_cal/Summit/config/6-racks-no-gpu-no-nvme.json"
-        )
+        template_node = summit / "config/node_config.json"
+        template_topology = summit / "config/6-racks-no-gpu-no-nvme.json"
+        
 
         with open(template_node, "r") as f:
             node = json.load(f)
@@ -122,12 +124,18 @@ class SMPISimulator(sc.Simulator):
             self.threshold,
             iterations,
             ','.join(map(str, byte_size)),
-            self.num_procs,
+            "--log=root.threshold:error",
+            f"--cfg=smpi/host-speed:{self.hostspeed}f"
         ]
 
+
         std_out, std_err, exit_code = sc.bash(
-            "/home/wongy/mpi_bench_cal/bin/wrapper_parallel", cmd_args, std_in=None
+            MPI_EXEC / "wrapper_parallel", cmd_args, std_in=None
         )
+
+        error_file = open("error.log", "a")
+
+        print(f"Std_err: \n{std_err}", file=error_file)
 
         final_results = [float(x) for x in std_out.strip().split(" ") if x != ""]
 
@@ -138,12 +146,29 @@ class SMPISimulator(sc.Simulator):
     ) -> Any:
         print("Running simulator with calibration: ", calibration)
         res = []
+        start_time = perf_counter()
+        
         for i in self.ground_truth[0]:
+            # print("Running simulation on groundtruth: ", i[0])
             temp = self.run_single_simulation(i[0], 10000, calibration, i[3])
-            print(temp)
-            res.append(temp)
+            res.extend(temp)
+
+            files = glob.glob('p2p_*.log')
+            
+            # Loop through and remove each file
+            for file in files:
+                try:
+                    os.remove(file)
+                except OSError as e:
+                    print(f"Error: {file} : {e.strerror}")
+
+            # print(f"Result for {i[0]}: {temp}")
+        print("-----------", file=sys.stderr)
+        print(f"Result: \n{res}\n", file=sys.stderr)
         ret = self.loss_function(res, self.ground_truth[1])
         print("Loss: ", ret)
+        print(f"Time taken: {perf_counter() - start_time}")
+        
         return ret
 
         
@@ -152,12 +177,21 @@ class SMPISimulator(sc.Simulator):
 
 if __name__ == "__main__":
     smpi_sim = SMPISimulator("ground_truth",
-        "IMB-P2P", "/home/wongy/mpi_bench_cal/hostfile.txt", 0.05
+        "IMB-P2P", "/home/wongy/calibration/mpi_bench_cal/hostfile.txt", 0.05, 24
     )
 
+    # calibration = {'cpu_speed': '26.50Gf', 'pcie_bw': '12.71Gbps', 'pcie_lat': '12.11ns', 'xbus_bw': '65.33GBps', 'xbus_lat': '8.36ns', 'limiter_bw': '5971.35Gbps', 'latency': '0.0000000080', 'bandwidth': '226871101886.73'}
+    calibration = {}
+    byte_sizes = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304]
     start_time = perf_counter()
-    result = smpi_sim.run_single_simulation("PingPing", 10, {}, "1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304")
+    results = []
+    result = smpi_sim.run_single_simulation("Birandom", 1000, calibration, byte_sizes)
+    results.extend(result)
+    result = smpi_sim.run_single_simulation("PingPing", 1000, calibration, byte_sizes) 
+    results.extend(result)
+    result = smpi_sim.run_single_simulation("PingPong", 1000, calibration, byte_sizes)
+    results.extend(result)
 
-    print(f"Result: {result}")
+    print(f"Result: {results}")
 
     print(f"Time taken: {perf_counter() - start_time}")
