@@ -25,21 +25,26 @@ class SMPISimulatorCalibrator:
         elif self.algorithm == "random":
             calibrator = sc.calibrators.Random()
         elif self.algorithm == "gradient":
-            calibrator = sc.calibrators.GradientDescent(0.001, 0.00001)
+            calibrator = sc.calibrators.GradientDescent(0.01, 1)
+        elif self.algorithm == "bo":
+            calibrator = sc.calibrators.ScikitOptimizer(1000)
         else:
             raise Exception(f"Unknown calibration algorithm {self.algorithm}")
     
         
         # Adding platform params
         calibrator.add_param("cpu_speed", sc.parameter.Linear(20, 100).format("%.2fGf"))
-        calibrator.add_param("pcie_bw", sc.parameter.Linear(16, 160).format("%.2fGbps"))
+        calibrator.add_param("pcie_bw", sc.parameter.Linear(16, 160).format("%.2fGBps"))
         calibrator.add_param("pcie_lat", sc.parameter.Linear(1, 20).format("%.2fns"))
-        calibrator.add_param("xbus_bw", sc.parameter.Linear(60, 70).format("%.2fGBps"))
+        calibrator.add_param("xbus_bw", sc.parameter.Linear(20, 80).format("%.2fGBps"))
         calibrator.add_param("xbus_lat", sc.parameter.Linear(1, 20).format("%.2fns"))
-        calibrator.add_param("limiter_bw", sc.parameter.Linear(90, 10000).format("%.2fGbps"))
 
-        calibrator.add_param("latency", sc.parameter.Linear(1e-8, 1e-10).format("%.10f"))
-        calibrator.add_param("bandwidth", sc.parameter.Linear(25e9, 250e9).format("%.2f"))
+        calibrator.add_param("latency", sc.parameter.Linear(1e-9, 1e-8).format("%.10f"))
+        calibrator.add_param("bandwidth", sc.parameter.Linear(1e9, 100e9).format("%.2f"))
+        calibrator.add_param("limiter_bw", sc.parameter.Linear(100, 10000).format("%.2fGbps"))
+
+        print(calibrator._ordered_params)
+        print(calibrator._categorical_params)
 
 
         # Adding smpi params
