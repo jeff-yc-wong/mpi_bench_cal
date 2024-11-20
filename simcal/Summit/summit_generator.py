@@ -62,8 +62,7 @@ if compil.returncode != 0:
       sys.stderr.write("Compilation of tmp.cppfailed\n")
       sys.exit(1)
 
-link   = subprocess.run(['g++','-v', '--std=c++17', '-shared', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+SIMGRID_INSTALL_PATH + '/lib', '-lsimgrid', 'tmp.o', '-o', topo["name"] + ".so",
-                        path / "lib/summit_base.o"])
+link   = subprocess.run(['g++','-v', '--std=c++17', '-shared', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+SIMGRID_INSTALL_PATH + '/lib', '-lsimgrid', 'tmp.o', '-o', topo["name"] + ".so", path / "lib/summit_base.o"])
 if link.returncode != 0:
       sys.stderr.write("Linking failed\n")
       sys.exit(1)
