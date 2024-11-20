@@ -1,0 +1,14 @@
+{
+    "name": "Summit-1-rack-with-gpu-with-nvme",
+    "Fat-Tree_parameters": {
+        "levels": 1,
+        "up_links": "{18}",
+        "down_links": "{1}",
+        "links_number": "{1}"
+    },
+    "node_generator_cb": "gpu_nvme",
+    "limiter_cb": "limiter",
+    "bandwidth": 25e9,
+    "latency": 1e-8,
+    "sharing_policy": "SPLITDUPLEX"
+}

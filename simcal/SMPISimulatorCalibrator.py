@@ -75,7 +75,3 @@ class SMPISimulatorCalibrator:
           sys.exit(1)
 
         return calibration, loss
-
-
-
-
