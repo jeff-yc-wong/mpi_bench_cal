@@ -19,7 +19,7 @@ path = Path(__file__).parent.absolute()
 lib_dir = path / "lib"
 
 if not lib_dir.exists():
-    lib_dir.mkdir(parent=True)
+    lib_dir.mkdir(parents=True)
 
 with open(path / 'src/node_config.hpp', 'w') as f:
       f.write("constexpr int cpu_core_count = " + str(node["cpu_core_count"]) + ";\n")
