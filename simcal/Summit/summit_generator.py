@@ -15,6 +15,12 @@ node = json.load(f_node)
 # get path of this file
 path = Path(__file__).parent.absolute()
 
+# check if lib folder exists
+lib_dir = path / "lib"
+
+if not lib_dir.exists():
+    lib_dir.mkdir(parent=True)
+
 with open(path / 'src/node_config.hpp', 'w') as f:
       f.write("constexpr int cpu_core_count = " + str(node["cpu_core_count"]) + ";\n")
       f.write("constexpr const char* cpu_speed = \"" + node["cpu_speed"] + "\";\n")
