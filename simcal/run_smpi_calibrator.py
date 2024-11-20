@@ -66,7 +66,7 @@ def main():
     # TODO: use argparse to parse cmdline arguments for calibration
     # which should only be time-limit and algorithm and maybe benchmarks (all or singular benchmarks)
 
-    summit_df = MPIGroundTruth("/home/wongy/calibration/mpi_bench_cal/imb-summit.csv") #NOTE: change
+    summit_df = MPIGroundTruth("../imb-summit.csv") #NOTE: change
 
     summit_df.set_benchmark_parent("P2P")
 
@@ -87,6 +87,8 @@ def main():
     filtered_df = filtered_df[pd.isnull(filtered_df["remark"])].reset_index(drop=True)
 
     filtered_df = filtered_df[filtered_df["benchmark"].isin(["PingPing", "PingPong", "Birandom"])]
+
+    filtered_df = filtered_df[filtered_df["bytes"] == 4194304]
 
     scenario_df = filtered_df[["benchmark", "node_count", "processes", "bytes"]].drop_duplicates().reset_index(drop=True)
     scenario_df = scenario_df.sort_values(by=["benchmark", "node_count", "processes", "bytes"]).reset_index(drop=True)
@@ -121,7 +123,7 @@ def main():
 
     data = list(test_data_df["Mbytes/sec"])
 
-    ground_truth_data = [known_points, data]
+    ground_truth_data = (known_points, data)
     
     #print(f"Known Points: {known_points}")
     #print(f"GroundTruth: {data}")
