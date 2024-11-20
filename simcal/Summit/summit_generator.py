@@ -15,6 +15,12 @@ node = json.load(f_node)
 # get path of this file
 path = Path(__file__).parent.absolute()
 
+# check if lib folder exists
+lib_dir = path / "lib"
+
+if not lib_dir.exists():
+    lib_dir.mkdir(parent=True)
+
 with open(path / 'src/node_config.hpp', 'w') as f:
       f.write("constexpr int cpu_core_count = " + str(node["cpu_core_count"]) + ";\n")
       f.write("constexpr const char* cpu_speed = \"" + node["cpu_speed"] + "\";\n")
@@ -62,7 +68,8 @@ if compil.returncode != 0:
       sys.stderr.write("Compilation of tmp.cppfailed\n")
       sys.exit(1)
 
-link   = subprocess.run(['g++','-v', '--std=c++17', '-shared', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+SIMGRID_INSTALL_PATH + '/lib', '-lsimgrid', 'tmp.o', '-o', topo["name"] + ".so", path / "lib/summit_base.o"])
+link   = subprocess.run(['g++','-v', '--std=c++17', '-shared', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+SIMGRID_INSTALL_PATH + '/lib', '-lsimgrid', 'tmp.o', '-o', topo["name"] + ".so",
+                        path / "lib/summit_base.o"])
 if link.returncode != 0:
       sys.stderr.write("Linking failed\n")
       sys.exit(1)
