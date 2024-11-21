@@ -46,8 +46,10 @@ class SMPISimulator(sc.Simulator):
         return res
 
 
-    def compile_platform(self, env: sc.Environment):
+    def compile_platform(self, env: sc.Environment, calibration: dict[str, sc.parameters.Value]):
         tmp_dir = env.tmp_dir()
+
+        print(f"Creating temporary directory: {tmp_dir}")
         # copy summit folder into tmpdir
         shutil.copytree(summit, tmp_dir / "Summit")
 
@@ -106,7 +108,9 @@ class SMPISimulator(sc.Simulator):
             + [tmp_dir / "node_config.json"]
             + [tmp_dir / "topology.json"]
         )
+
         _, std_err, exit_code = env.bash("python3", platform_args)
+
         if exit_code:
             sys.stderr.write(
                 f"Platform was unable to be built and has failed with exit code {exit_code}!\n\n{std_err}\n"
@@ -116,7 +120,7 @@ class SMPISimulator(sc.Simulator):
         return tmp_dir
 
 
-    def run_single_simulation(self, tmp_dir, benchmark, iterations, calibration, byte_size):
+    def run_single_simulation(self, tmp_dir, benchmark, iterations, byte_size):
         executable = MPI_EXEC / self.benchmark_parent
 
         platform_file = tmp_dir / "summit_temp.so"
@@ -156,11 +160,10 @@ class SMPISimulator(sc.Simulator):
         res = []
         start_time = perf_counter()
 
-        tmp_dir = self.compile_platform(env)
+        tmp_dir = self.compile_platform(env, calibration)
 
         for i in self.ground_truth[0]:
-            # print("Running simulation on groundtruth: ", i[0])
-            temp = self.run_single_simulation(tmp_dir, i[0], 10000, calibration, i[3])
+            temp = self.run_single_simulation(tmp_dir, i[0], 10000, i[3])
             res.extend(temp)
 
             files = glob.glob('p2p_*.log')
