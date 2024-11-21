@@ -1,74 +1,33 @@
 import argparse
 import pandas as pd
+import pytimeparse
 
 from GroundTruth import MPIGroundTruth
 from SMPISimulator import SMPISimulator
 from SMPISimulatorCalibrator import SMPISimulatorCalibrator
 
+def main():    
+    # Create the parser
+    parser = argparse.ArgumentParser(description="Example script using argparse")
 
-def parse_ground_truth(ground_truth, use_iqm=False):
-    data = []
-    temp_data = {}
-    last_row_value = None
+    # Add arguments
+    # byte_sizes is a list of integers separated by commas
+    parser.add_argument("byte_sizes", type=lambda s: [int(item) for item in s.split(",")], help="List of byte sizes to calibrate")  # Required
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose mode")  # Optional flag
+    parser.add_argument("-a", "--algorithm", type=str, default="random", help="Algorithms to use for calibration (Default: random)")  # Optional argument
+    parser.add_argument("-t", "--time_limit", type=str, default="3h", help="Time limit for calibration (Default: 3h)")  # Optional argument
 
-    for _, row in ground_truth.iterrows():
-        if last_row_value is None or row["bytes"] < last_row_value:
-            if temp_data:
-                data.append(temp_data)
-                temp_data = {}
-        temp_data[int(row["bytes"])] = row["Mbytes/sec"]
-        last_row_value = row["bytes"]
+    # Parse the arguments
+    args = parser.parse_args()
 
-    if temp_data:
-        data.append(temp_data)
-
-    byte_sizes = sorted({key for sublist in data for key in sublist.keys()})
-
-    mean_msg_speeds = {}
-
-    for byte_size in byte_sizes:
-        msg_speeds = sorted(
-            [sublist[byte_size] for sublist in data if byte_size in sublist]
-        )
-
-        if not use_iqm:
-            mean_msg_speeds[byte_size] = round(sum(msg_speeds) / len(msg_speeds), 2)
-        else:
-            # Calculating the interquartile mean (between 25th quartile and 75th qaurtile)
-            quartile_range = len(msg_speeds) // 4
-            sub_arr = msg_speeds[quartile_range:-quartile_range]
-            mean_msg_speeds[byte_size] = round(sum(sub_arr) / len(sub_arr), 2)
-
-    index_of_non_full_list = [
-        i for i, sublist in enumerate(data) if len(sublist) < len(byte_sizes)
-    ]
-
-    for index in index_of_non_full_list:
-        for byte_size in byte_sizes:
-            if byte_size not in data[index]:
-                data[index][byte_size] = mean_msg_speeds[byte_size]
-
-    assert all(len(sublist) == len(byte_sizes) for sublist in data)
-
-    data_arr = []
-
-    for i, sublist in enumerate(data):
-        # This sorts the dictionary by keys
-        data[i] = dict(sorted(sublist.items()))
-        data_arr.append(list(data[i].values()))
-
-    assert len(data_arr) == len(data)
-
-    return data_arr
-
-
-def main():
-    # TODO: use argparse to parse cmdline arguments for calibration
-    # which should only be time-limit and algorithm and maybe benchmarks (all or singular benchmarks)
+    time_limit =  pytimeparse.parse(args.time_limit)
 
     summit_df = MPIGroundTruth("../imb-summit.csv") #NOTE: change
 
     summit_df.set_benchmark_parent("P2P")
+
+
+    # TODO: clean up data filtering
 
     filtered_df = summit_df.get_ground_truth(
         node_count=128,
@@ -88,7 +47,8 @@ def main():
 
     filtered_df = filtered_df[filtered_df["benchmark"].isin(["PingPing", "PingPong", "Birandom"])]
 
-    filtered_df = filtered_df[filtered_df["bytes"] == 4194304]
+    # filter by byte sizes
+    filtered_df = filtered_df[filtered_df["bytes"].isin(args.byte_sizes)]
 
     scenario_df = filtered_df[["benchmark", "node_count", "processes", "bytes"]].drop_duplicates().reset_index(drop=True)
     scenario_df = scenario_df.sort_values(by=["benchmark", "node_count", "processes", "bytes"]).reset_index(drop=True)
@@ -125,22 +85,19 @@ def main():
 
     ground_truth_data = (known_points, data)
     
-    #print(f"Known Points: {known_points}")
-    #print(f"GroundTruth: {data}")
+    print(f"Known Points: {known_points}")
+    print(f"GroundTruth: {data}")
 
     smpi_sim = SMPISimulator(
-        ground_truth_data, "IMB-P2P", "/home/wongy/calibration/mpi_bench_cal/hostfile.txt", 0.05, 24
+        ground_truth_data, "IMB-P2P", "../hostfile.txt", 0.05, 24
     )
 
 
     calibrator = SMPISimulatorCalibrator(
-        "random", smpi_sim
+        args.algorithm, smpi_sim
     )
 
-    calibrator.compute_calibration(10800, 1)
-
-
-
+    calibrator.compute_calibration(time_limit, 1)
 
 if __name__ == "__main__":
     main()
