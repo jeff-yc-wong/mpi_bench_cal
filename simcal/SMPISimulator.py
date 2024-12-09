@@ -14,8 +14,10 @@ from GroundTruth import MPIGroundTruth
 from Utils import explained_variance_error
 from calibrate_flops import calibrate_hostspeed
 
-MPI_EXEC = Path("../bin").resolve()
-summit = Path("./Summit").resolve()
+file_abs_path = Path(__file__).parent.absolute()
+
+MPI_EXEC = Path(file_abs_path.parent / "bin").resolve()
+summit = Path(file_abs_path / "Summit").resolve()
 
 class SMPISimulator(sc.Simulator):
 
@@ -31,6 +33,8 @@ class SMPISimulator(sc.Simulator):
         self.num_procs = num_procs
         self.loss_function = explained_variance_error
         self.hostspeed = calibrate_hostspeed()
+        self.best_loss = None
+        self.best_result = None
 
     def need_more_benchs(self, count, iterations, relstderr):
         # setting a minimum iteration of 10
@@ -49,8 +53,9 @@ class SMPISimulator(sc.Simulator):
     def compile_platform(self, env: sc.Environment, calibration: dict[str, sc.parameters.Value]):
         tmp_dir = env.tmp_dir()
 
-        print(f"Creating temporary directory: {tmp_dir}")
-        # copy summit folder into tmpdir
+        print(f"Creating temporary directory: {tmp_dir}", file=sys.stderr)
+        
+         # copy summit folder into tmpdir
         shutil.copytree(summit, tmp_dir / "Summit")
 
         smpi_args_dict = {}
@@ -156,6 +161,7 @@ class SMPISimulator(sc.Simulator):
     def run(
         self, env: sc.Environment, calibration: dict[str, sc.parameters.Value]
     ) -> Any:
+        calibration = {k: str(v) for k, v in calibration.items()}
         print("Running simulator with calibration: ", calibration)
         res = []
         start_time = perf_counter()
@@ -178,20 +184,24 @@ class SMPISimulator(sc.Simulator):
             # print(f"Result for {i[0]}: {temp}")
         print("-----------", file=sys.stderr)
         print(f"Result: \n{res}\n", file=sys.stderr)
-        ret = self.loss_function(res, self.ground_truth[1])
-        print("Loss: ", ret)
+        loss_val = self.loss_function(res, self.ground_truth[1])
+        print("Loss: ", loss_val)
         print(f"Time taken: {perf_counter() - start_time}")
         
-        return ret
+
+        if self.best_loss is None or loss_val < self.best_loss:
+            self.best_loss = loss_val
+            self.best_result = res
+        return loss_val
 
 if __name__ == "__main__":
     # byte_sizes = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304]
 
-    byte_sizes = [4194304]
+    byte_sizes = [1024]
 
     known_points = [
-        ("Birandom", 128, 768, byte_sizes),
-        ("PingPing", 128, 768, byte_sizes),
+#        ("Birandom", 128, 768, byte_sizes),
+#        ("PingPing", 128, 768, byte_sizes),
         ("PingPong", 128, 768, byte_sizes)
     ]
 
@@ -204,13 +214,19 @@ if __name__ == "__main__":
     )
 
     env = sc.Environment()
+    calibration = {
+        'cpu_speed': '97.12Gf', 
+        'pcie_bw': '23.14GBps', 
+        'pcie_lat': '7.16ns', 
+        'xbus_bw': '61.78GBps', 
+        'xbus_lat': '11.76ns', 
+        'latency': '0.0000000010', 
+        'bandwidth': '69639812411.57', 
+        'limiter_bw': '8848.39Gbps'
+    }
 
-    calibration = {'cpu_speed': '86.85Gf', 'pcie_bw': '145.80Gbps', 'pcie_lat': '16.45ns', 'xbus_bw': '68.54GBps', 'xbus_lat': '11.28ns', 'limiter_bw': '13558.34Gbps', 'latency': '0.0000000030', 'bandwidth': '4375934687030.83'}
+    # calibration = {'cpu_speed': '86.85Gf', 'pcie_bw': '145.80Gbps', 'pcie_lat': '16.45ns', 'xbus_bw': '68.54GBps', 'xbus_lat': '11.28ns', 'limiter_bw': '13558.34Gbps', 'latency': '0.0000000030', 'bandwidth': '4375934687030.83'}
 #    calibration = {'cpu_speed': '91.81Gf', 'pcie_bw': '133.79Gbps', 'pcie_lat': '15.93ns', 'xbus_bw': '62.72GBps', 'xbus_lat': '5.29ns', 'limiter_bw': '6519.06Gbps', 'latency': '0.0000000081', 'bandwidth': '166664948515.11'}
     start_time = perf_counter()
     
     results = smpi_sim.run(env, calibration)
-
-    print(f"Result: {results}")
-
-    print(f"Time taken: {perf_counter() - start_time}")

@@ -133,7 +133,7 @@ def calibrate_hostspeed():
     
     # Initial bounds for the binary search
     low = 0
-    high = 62500000000.0
+    high = 31250000000.0
     
     while (True):
     
