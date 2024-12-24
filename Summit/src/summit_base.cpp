@@ -76,7 +76,7 @@ static simgrid::kernel::routing::NetPoint* add_cpus_and_nic(sg4::NetZone* node_z
   return nic;
 }
 
-static sg4::NetZone* create_node(const sg4::NetZone* parent_zone, unsigned long id, bool with_gpus, bool with_nvme)
+sg4::NetZone* create_node(const sg4::NetZone* parent_zone, unsigned long id, bool with_gpus, bool with_nvme)
 {
   auto* node_zone = sg4::create_full_zone("node-" + std::to_string(id))->set_parent(parent_zone);
   auto* nic       = add_cpus_and_nic(node_zone, with_gpus, with_nvme);

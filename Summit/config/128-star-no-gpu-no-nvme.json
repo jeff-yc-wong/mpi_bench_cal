@@ -1,0 +1,11 @@
+{
+    "name": "Summit-128-star-no-gpu-no-nvme",
+    "Star-Zone_parameters": {
+        "nb_nodes": 128
+    },
+    "node_generator_cb": "no_gpu_no_nvme",
+    "limiter_cb": "limiter",
+    "bandwidth": 25e9,
+    "latency": 1e-8,
+    "sharing_policy": "SPLITDUPLEX"
+}

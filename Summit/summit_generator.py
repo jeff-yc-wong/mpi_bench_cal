@@ -40,18 +40,39 @@ with open(path / 'src/node_config.hpp', 'w') as f:
 f_topo = open(sys.argv[2])
 topo = json.load(f_topo)
 
-with open('tmp.cpp', 'w') as f:
-      f.write("#include \"summit_base.hpp\"\n")
-      f.write("extern \"C\" void load_platform(const sg4::Engine& e);\n")
-      f.write("void load_platform(const sg4::Engine&)\n")
-      f.write("{\n")
-      f.write("sg4::create_fatTree_zone(\"" + topo["name"] +"\", nullptr, {" +
-              str(topo["Fat-Tree_parameters"]["levels"]) + ", " + topo["Fat-Tree_parameters"]["up_links"] + ", " +
-              topo["Fat-Tree_parameters"]["down_links"] + ", " + topo["Fat-Tree_parameters"]["links_number"] +
-              "}, {" + topo["node_generator_cb"] + ", {}, " + topo["limiter_cb"] + "}, " +
-              str(topo["bandwidth"]) + ", " + str(topo["latency"]) +
-              ", sg4::Link::SharingPolicy::" + topo["sharing_policy"] +")->seal();\n")
-      f.write("}\n")
+if "Fat-Tree_parameters" in topo:
+      with open('tmp.cpp', 'w') as f:
+            f.write("#include \"summit_base.hpp\"\n")
+            f.write("extern \"C\" void load_platform(const sg4::Engine& e);\n")
+            f.write("void load_platform(const sg4::Engine&)\n")
+            f.write("{\n")
+            f.write("sg4::create_fatTree_zone(\"" + topo["name"] +"\", nullptr, {" +
+                  str(topo["Fat-Tree_parameters"]["levels"]) + ", " + topo["Fat-Tree_parameters"]["up_links"] + ", " +
+                  topo["Fat-Tree_parameters"]["down_links"] + ", " + topo["Fat-Tree_parameters"]["links_number"] +
+                  "}, {" + topo["node_generator_cb"] + ", {}, " + topo["limiter_cb"] + "}, " +
+                  str(topo["bandwidth"]) + ", " + str(topo["latency"]) +
+                  ", sg4::Link::SharingPolicy::" + topo["sharing_policy"] +")->seal();\n")
+            f.write("}\n")
+elif "Star-Zone_parameters" in topo:
+      with open('tmp.cpp', 'w') as f:
+            f.write("#include \"summit_base.hpp\"\n")
+            f.write("extern \"C\" void load_platform(const sg4::Engine& e);\n")
+            f.write("void load_platform(const sg4::Engine&)\n")
+            f.write("{\n")
+            f.write(f"""auto* cluster = sg4::create_star_zone("{topo["name"]}");\n""")
+            f.write(f"""const sg4::Link* backbone = cluster->{"create_split_duplex_link" if topo["sharing_policy"] == "SPLITDUPLEX" else "create_link"}""" + 
+                    f"""("backbone", {topo["bandwidth"]})->set_latency({topo["latency"]})""")
+            f.write(f"->set_sharing_policy(sg4::Link::SharingPolicy::{topo['sharing_policy']});\n" if topo["sharing_policy"] != "SPLITDUPLEX" else ";")
+            f.write(
+f"""
+for (int i = 0; i < {topo["Star-Zone_parameters"]["nb_nodes"]}; i++) {{
+  sg4::NetZone* node = create_node(cluster, i, false, false);
+  cluster->add_route(node, nullptr, {{backbone}});
+}}
+cluster->seal();
+""")
+            f.write("}\n")
+
 
 base   = subprocess.run(['g++', '-v', '--std=c++17', '-I'+ SIMGRID_INSTALL_PATH +'/include', '-L'+ SIMGRID_INSTALL_PATH +
                         '/lib64/', '-lsimgrid', '-fPIC', '-g', '-O2', '-Wall', '-Wextra', '-c', path / 'src/summit_base.cpp', '-o',
@@ -74,7 +95,7 @@ if link.returncode != 0:
       sys.stderr.write("Linking failed\n")
       sys.exit(1)
 
-clean  = subprocess.run(['rm', '-f', 'tmp.cpp', 'tmp.o'])
+# clean  = subprocess.run(['rm', '-f', 'tmp.cpp', 'tmp.o'])
 
 base
 compil
