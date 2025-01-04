@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#/usr/bin/env python3
 import sys
 import os
 import subprocess
@@ -133,7 +133,7 @@ def calibrate_hostspeed():
     
     # Initial bounds for the binary search
     low = 0
-    high = 31250000000.0
+    high = 7812500000.00
     
     while (True):
     

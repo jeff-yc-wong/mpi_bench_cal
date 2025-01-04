@@ -15,9 +15,10 @@ import SMPISimulator
 from GroundTruth import MPIGroundTruth
 
 class SMPISimulatorCalibrator:
-    def __init__(self, algorithm: str, simulator: SMPISimulator):
+    def __init__(self, algorithm: str, simulator: SMPISimulator, param_file: str):
         self.algorithm = algorithm
         self.simulator = simulator
+        self.param_file = param_file
 
     def compute_calibration(self, time_limit: float, num_threads: int):
         if self.algorithm == "grid":
@@ -27,24 +28,24 @@ class SMPISimulatorCalibrator:
         elif self.algorithm == "gradient":
             calibrator = sc.calibrators.GradientDescent(0.01, 1)
         elif self.algorithm == "bo":
-            calibrator = sc.calibrators.ScikitOptimizer(1000)
+            calibrator = sc.calibrators.BayesianOptimization(seed=0)
         else:
             raise Exception(f"Unknown calibration algorithm {self.algorithm}")
     
         
-        # Adding platform params
-        calibrator.add_param("cpu_speed", sc.parameter.Linear(20, 100).format("%.2fGf"))
-        calibrator.add_param("pcie_bw", sc.parameter.Linear(16, 160).format("%.2fGBps"))
-        calibrator.add_param("pcie_lat", sc.parameter.Linear(1, 30).format("%.2fns"))
-        calibrator.add_param("xbus_bw", sc.parameter.Linear(20, 80).format("%.2fGBps"))
-        calibrator.add_param("xbus_lat", sc.parameter.Linear(1, 30).format("%.2fns"))
-
-        calibrator.add_param("latency", sc.parameter.Linear(1e-9, 1e-8).format("%.10f"))
-        calibrator.add_param("bandwidth", sc.parameter.Linear(1e9, 100e9).format("%.2f"))
-        calibrator.add_param("limiter_bw", sc.parameter.Linear(100, 10000).format("%.2fGbps"))
-
-        print(calibrator._ordered_params)
-        print(calibrator._categorical_params)
+        # Adding platform params by reading in a txt file that should contain python code
+        try:
+            with open(self.param_file, 'r') as file:
+                code = file.read()
+                print(f"{code}")
+                print("-----------------------------------------------------")
+                # Execute the code in the current interpreter's context
+                compile(code, self.param_file, 'exec')
+                exec(code, globals(), locals())
+        except FileNotFoundError:
+            print(f"Error: The file '{self.param_file}' does not exist.")
+        except Exception as e:
+            print(f"An error occurred while executing the file: {e}")
 
 
         # Adding smpi params
@@ -61,29 +62,13 @@ class SMPISimulatorCalibrator:
         coordinator = sc.coordinators.ThreadPool(pool_size=num_threads)
 
         try:
-          start_time = perf_counter()
-          calibration, loss = calibrator.calibrate(self.simulator, timelimit=time_limit, coordinator=coordinator)
-          elapsed = int(perf_counter() - start_time)
-          print("----------------")
-          sys.stderr.write(f"Actually ran in {timedelta(seconds=elapsed)}\n")
-          for i in calibration:
-            calibration[i] = str(calibration[i])
-          with open("result.txt", "w") as f:
-            print("Calibrated Args: ")
-            print(calibration)
-            print(f"Loss: {loss}")
-            print("----------------")
-            f.write("Calibrated Args: \n")
-            f.write(str(calibration))
-            f.write("\n")
-            f.write(f"Loss: {loss}")
-            f.write("\n")
-            f.write("----------------\n")
-            f.write(f"Best Result: {self.simulator.best_result}")
-            f.write("\n")
+            start_time = perf_counter()
+            calibration, loss = calibrator.calibrate(self.simulator, timelimit=time_limit, coordinator=coordinator)
+            elapsed = int(perf_counter() - start_time)
+            sys.stderr.write(f"Actually ran in {timedelta(seconds=elapsed)}\n----------------\n")
         except Exception as error:
-          sys.stderr.write(str(type(error)))
-          sys.stderr.write(f"Error while running experiments: {error}\n")
-          sys.exit(1)
+            sys.stderr.write(str(type(error)))
+            sys.stderr.write(f"Error while running experiments: {error}\n")
+            sys.exit(1)
 
         return calibration, loss
