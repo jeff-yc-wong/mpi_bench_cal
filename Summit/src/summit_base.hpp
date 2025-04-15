@@ -9,6 +9,12 @@ sg4::NetZone*
 create_node(const sg4::NetZone* parent_zone, unsigned long id, bool with_gpus, bool with_nvme);
 
 sg4::NetZone*
+create_simple_node(const sg4::NetZone* parent_zone, unsigned long id);
+
+sg4::NetZone*
+simple_node(const sg4::NetZone* parent_zone, const std::vector<unsigned long>& /*coord*/, unsigned long id);
+
+sg4::NetZone*
 no_gpu_no_nvme(const sg4::NetZone* parent_zone, const std::vector<unsigned long>& /*coord*/, unsigned long id);
 
 sg4::NetZone*

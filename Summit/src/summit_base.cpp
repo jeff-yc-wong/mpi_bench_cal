@@ -87,6 +87,25 @@ sg4::NetZone* create_node(const sg4::NetZone* parent_zone, unsigned long id, boo
   return node_zone;
 }
 
+sg4::NetZone* create_simple_node(const sg4::NetZone* parent_zone, unsigned long id)
+{
+  auto* node_zone = sg4::create_full_zone("node-" + std::to_string(id))->set_parent(parent_zone);
+
+  const std::string node_name = node_zone->get_cname();
+
+  std::string cpu_name = node_name + "-cpu-0";
+
+  node_zone->create_host(cpu_name, cpu_speed)->set_core_count(cpu_core_count);
+  node_zone->seal();
+
+  return node_zone;
+}
+
+sg4::NetZone* simple_node(const sg4::NetZone* parent_zone, const std::vector<unsigned long>& /*coord*/, unsigned long id)
+{
+  return create_simple_node(parent_zone, id);
+}
+
 sg4::NetZone* no_gpu_no_nvme(const sg4::NetZone* parent_zone, const std::vector<unsigned long>& /*coord*/, unsigned long id)
 {
   return create_node(parent_zone, id, false, false);
