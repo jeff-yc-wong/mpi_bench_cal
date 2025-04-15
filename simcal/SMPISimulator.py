@@ -255,6 +255,11 @@ class SMPISimulator(sc.Simulator):
             MPI_EXEC / "wrapper_parallel", cmd_args, std_in=None
         )
 
+        if exit_code:
+            sys.stderr.write(
+                f"Simulation was unable to be run and has failed with exit code {exit_code}!\n\n{std_err}\n"
+            )
+            exit(1)
 
         print(f"Std_err: \n{std_err}", file=error_file)
 
