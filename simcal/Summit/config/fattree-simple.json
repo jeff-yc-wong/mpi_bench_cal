@@ -1,0 +1,14 @@
+{
+    "name": "simple-fattree",
+    "Fat-Tree_parameters": {
+        "levels": 3,
+        "up_links": "{4, 4, 8}",
+        "down_links": "{1, 1, 1}",
+        "links_number": "{1, 1, 1}"
+    },
+    "node_generator_cb": "no_gpu_no_nvme",
+    "limiter_cb": "nullptr",
+    "bandwidth": 25e9,
+    "latency": 1e-8,
+    "sharing_policy": "SPLITDUPLEX"
+}

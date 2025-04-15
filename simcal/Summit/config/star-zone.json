@@ -1,0 +1,14 @@
+{
+    "name": "single-backbone",
+    "Star-Zone_parameters": {
+        "nb_nodes": 128,
+        "host_bandwidth": 1000e9,
+        "host_latency": 0,
+        "host_sharing_policy": "SPLITDUPLEX"
+    },
+    "node_generator_cb": "simple_node",
+    "limiter_cb": "limiter",
+    "bandwidth": 25e9,
+    "latency": 1e-8,
+    "sharing_policy": "SPLITDUPLEX"
+}

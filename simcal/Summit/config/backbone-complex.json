@@ -1,0 +1,11 @@
+{
+    "name": "complex-backbone",
+    "nb_nodes": 128,
+    "node_generator_cb": "no_gpu_no_nvme",
+    "bandwidth": 25e9,
+    "latency": 1e-8,
+    "sharing_policy": "SPLITDUPLEX",
+    "host_bandwidth": 1000e9,
+    "host_latency": 0,
+    "host_sharing_policy": "SPLITDUPLEX"
+}
