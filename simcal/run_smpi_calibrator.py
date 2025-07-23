@@ -40,6 +40,8 @@ class CustomJSONEncoder(json.JSONEncoder):
             return result
         elif isinstance(obj, bool):
             return str(obj)
+        elif obj is None:
+            return 'None'
         else:
             # Default encoding for other types
             return super().encode(obj)  
